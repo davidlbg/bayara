@@ -1,9 +1,5 @@
 .venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-*.generated.py
 output.py
 models/*.pkl
-exports/

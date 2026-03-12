@@ -1,0 +1,19 @@
+/* Bayara 1.0.1 example */
+
+dataset churn from "data/churn.csv"
+inspect churn
+
+prepare churn {
+    fill nulls balance with median
+    onehot segment
+    standardize age, balance, salary
+}
+
+target churn -> exited
+features churn -> age, balance, salary, segment_enterprise, segment_retail
+
+model clf as logistic_regression
+train clf with churn
+
+evaluate clf with accuracy, precision, recall, f1
+save clf to "models/churn.pkl"

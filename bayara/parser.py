@@ -1,171 +1,224 @@
-import re
-from typing import List
-
 from .ast_nodes import (
-    ColumnsStmt,
     DatasetStmt,
-    DescribeStmt,
     EvaluateStmt,
     ExportStmt,
     FeaturesStmt,
     ModelStmt,
-    PredictStmt,
-    PrepareCommand,
+    PrepareDropCmd,
+    PrepareFillNullsCmd,
+    PrepareOneHotCmd,
+    PrepareScaleCmd,
     PrepareStmt,
     Program,
     SaveStmt,
-    ShapeStmt,
-    ShowStmt,
+    SimpleDatasetStmt,
     SplitStmt,
     TargetStmt,
     TrainStmt,
 )
 from .errors import BayaraSyntaxError
-from .lexer import SourceLine, lex_source
+from .tokens import Token
 
 
-DATASET_RE = re.compile(r'^dataset\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+from\s+"(?P<path>.+)"$')
-SIMPLE_NAME_RE = re.compile(r'^(show|describe|columns|shape)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)$')
-TARGET_RE = re.compile(r'^target\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)\s*->\s*(?P<column>[A-Za-z_][A-Za-z0-9_]*)$')
-FEATURES_RE = re.compile(r'^features\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)\s*->\s*(?P<columns>.+)$')
-SPLIT_RE = re.compile(r'^split\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)\s+test\s+(?P<test_size>0(?:\.\d+)?|1(?:\.0+)?)$')
-MODEL_RE = re.compile(r'^model\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+as\s+(?P<model_type>[A-Za-z_][A-Za-z0-9_]*)$')
-TRAIN_RE = re.compile(r'^train\s+(?P<model>[A-Za-z_][A-Za-z0-9_]*)\s+with\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)$')
-EVAL_RE = re.compile(r'^evaluate\s+(?P<model>[A-Za-z_][A-Za-z0-9_]*)\s+with\s+(?P<metrics>.+)$')
-SAVE_RE = re.compile(r'^save\s+(?P<model>[A-Za-z_][A-Za-z0-9_]*)\s+to\s+"(?P<path>.+)"$')
-EXPORT_RE = re.compile(r'^export\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)\s+to\s+"(?P<path>.+)"$')
-PREDICT_RE = re.compile(r'^predict\s+(?P<model>[A-Za-z_][A-Za-z0-9_]*)\s+on\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)$')
-PREPARE_OPEN_RE = re.compile(r'^prepare\s+(?P<dataset>[A-Za-z_][A-Za-z0-9_]*)\s*\{$')
+class Parser:
+    def __init__(self, tokens: list[Token]):
+        self.tokens = tokens
+        self.pos = 0
 
+    def current(self) -> Token:
+        return self.tokens[self.pos]
 
-VALID_PREPARE_COMMANDS = {"drop nulls", "onehot", "standardize", "normalize"}
+    def peek(self, offset: int = 1) -> Token:
+        idx = min(self.pos + offset, len(self.tokens) - 1)
+        return self.tokens[idx]
 
+    def advance(self) -> Token:
+        tok = self.current()
+        if tok.type != 'EOF':
+            self.pos += 1
+        return tok
 
-def parse_identifier_list(value: str, line_no: int) -> List[str]:
-    parts = [item.strip() for item in value.split(',') if item.strip()]
-    if not parts:
-        raise BayaraSyntaxError(line_no, 'expected at least one identifier')
-    for part in parts:
-        if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', part):
-            raise BayaraSyntaxError(line_no, f"invalid identifier '{part}'")
-    return parts
+    def match(self, *types: str) -> Token | None:
+        if self.current().type in types:
+            return self.advance()
+        return None
 
+    def expect(self, token_type: str, value: str | None = None, message: str | None = None) -> Token:
+        tok = self.current()
+        if tok.type != token_type or (value is not None and tok.value != value):
+            if message is None:
+                expected = value if value is not None else token_type
+                message = f"expected {expected}"
+            raise BayaraSyntaxError(message, tok.line, tok.column)
+        return self.advance()
 
-def parse_prepare_command(source_line: SourceLine) -> PrepareCommand:
-    text = source_line.text
-    if text == 'drop nulls':
-        return PrepareCommand(line_no=source_line.line_no, command='drop nulls')
+    def expect_keyword(self, value: str) -> Token:
+        tok = self.current()
+        if tok.type != 'IDENT' or tok.value != value:
+            raise BayaraSyntaxError(f"expected '{value}'", tok.line, tok.column)
+        return self.advance()
 
-    for prefix in ('onehot ', 'standardize ', 'normalize '):
-        if text.startswith(prefix):
-            cols = parse_identifier_list(text[len(prefix):], source_line.line_no)
-            return PrepareCommand(line_no=source_line.line_no, command=prefix.strip(), columns=cols)
+    def parse(self) -> Program:
+        statements = []
+        while self.current().type != 'EOF':
+            while self.match('NEWLINE'):
+                pass
+            if self.current().type == 'EOF':
+                break
+            statements.append(self.parse_statement())
+            while self.match('NEWLINE'):
+                pass
+        return Program(statements)
 
-    raise BayaraSyntaxError(source_line.line_no, f"invalid prepare command: '{text}'")
+    def parse_statement(self):
+        tok = self.current()
+        if tok.type != 'IDENT':
+            raise BayaraSyntaxError('expected statement', tok.line, tok.column)
+        kw = tok.value
+        if kw == 'dataset':
+            return self.parse_dataset()
+        if kw in {'show', 'describe', 'columns', 'shape', 'inspect'}:
+            return self.parse_simple_dataset_stmt()
+        if kw == 'prepare':
+            return self.parse_prepare()
+        if kw == 'target':
+            return self.parse_target()
+        if kw == 'features':
+            return self.parse_features()
+        if kw == 'split':
+            return self.parse_split()
+        if kw == 'model':
+            return self.parse_model()
+        if kw == 'train':
+            return self.parse_train()
+        if kw == 'evaluate':
+            return self.parse_evaluate()
+        if kw == 'save':
+            return self.parse_save()
+        if kw == 'export':
+            return self.parse_export()
+        raise BayaraSyntaxError(f"unknown statement '{kw}'", tok.line, tok.column)
 
+    def parse_dataset(self) -> DatasetStmt:
+        start = self.expect_keyword('dataset')
+        name = self.expect('IDENT', message='expected dataset name').value
+        self.expect_keyword('from')
+        path = self.expect('STRING', message='expected CSV path string').value
+        return DatasetStmt(name=name, path=path, line=start.line)
 
-def parse_source(source: str) -> Program:
-    lines = lex_source(source)
-    statements = []
-    i = 0
+    def parse_simple_dataset_stmt(self) -> SimpleDatasetStmt:
+        start = self.advance()
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        return SimpleDatasetStmt(command=start.value, dataset=dataset, line=start.line)
 
-    while i < len(lines):
-        line = lines[i]
-        text = line.text
+    def parse_prepare(self) -> PrepareStmt:
+        start = self.expect_keyword('prepare')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        self.expect('LBRACE', message="expected '{' to open prepare block")
+        while self.match('NEWLINE'):
+            pass
+        commands = []
+        while self.current().type != 'RBRACE':
+            commands.append(self.parse_prepare_command())
+            while self.match('NEWLINE'):
+                pass
+            if self.current().type == 'EOF':
+                raise BayaraSyntaxError("expected '}' to close prepare block", self.current().line, self.current().column)
+        self.expect('RBRACE')
+        return PrepareStmt(dataset=dataset, commands=commands, line=start.line)
 
-        m = DATASET_RE.match(text)
-        if m:
-            statements.append(DatasetStmt(line_no=line.line_no, name=m.group('name'), path=m.group('path')))
-            i += 1
-            continue
+    def parse_prepare_command(self):
+        tok = self.current()
+        if tok.type != 'IDENT':
+            raise BayaraSyntaxError('expected prepare command', tok.line, tok.column)
+        if tok.value == 'drop':
+            start = self.advance()
+            columns = self.parse_ident_list()
+            return PrepareDropCmd(columns=columns, line=start.line)
+        if tok.value == 'fill':
+            start = self.advance()
+            self.expect_keyword('nulls')
+            column = self.expect('IDENT', message='expected column after fill nulls').value
+            self.expect_keyword('with')
+            strategy_token = self.current()
+            if strategy_token.type == 'IDENT' and strategy_token.value in {'mean', 'median', 'mode'}:
+                strategy = self.advance().value
+            elif strategy_token.type == 'STRING':
+                strategy = self.advance().value
+            elif strategy_token.type == 'NUMBER':
+                raw = self.advance().value
+                strategy = float(raw) if '.' in raw else int(raw)
+            else:
+                raise BayaraSyntaxError("expected mean, median, mode, string or number after 'with'", strategy_token.line, strategy_token.column)
+            return PrepareFillNullsCmd(column=column, strategy=strategy, line=start.line)
+        if tok.value == 'onehot':
+            start = self.advance()
+            columns = self.parse_ident_list()
+            return PrepareOneHotCmd(columns=columns, line=start.line)
+        if tok.value in {'standardize', 'normalize'}:
+            start = self.advance()
+            columns = self.parse_ident_list()
+            return PrepareScaleCmd(kind=start.value, columns=columns, line=start.line)
+        raise BayaraSyntaxError(f"unknown prepare command '{tok.value}'", tok.line, tok.column)
 
-        m = SIMPLE_NAME_RE.match(text)
-        if m:
-            cmd = text.split()[0]
-            name = m.group('name')
-            stmt_map = {
-                'show': ShowStmt,
-                'describe': DescribeStmt,
-                'columns': ColumnsStmt,
-                'shape': ShapeStmt,
-            }
-            statements.append(stmt_map[cmd](line_no=line.line_no, name=name))
-            i += 1
-            continue
+    def parse_target(self) -> TargetStmt:
+        start = self.expect_keyword('target')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        self.expect('ARROW', message="expected '->' after dataset in target statement")
+        column = self.expect('IDENT', message='expected target column').value
+        return TargetStmt(dataset=dataset, column=column, line=start.line)
 
-        m = TARGET_RE.match(text)
-        if m:
-            statements.append(TargetStmt(line_no=line.line_no, dataset=m.group('dataset'), column=m.group('column')))
-            i += 1
-            continue
+    def parse_features(self) -> FeaturesStmt:
+        start = self.expect_keyword('features')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        self.expect('ARROW', message="expected '->' after dataset in features statement")
+        columns = self.parse_ident_list()
+        return FeaturesStmt(dataset=dataset, columns=columns, line=start.line)
 
-        m = FEATURES_RE.match(text)
-        if m:
-            columns = parse_identifier_list(m.group('columns'), line.line_no)
-            statements.append(FeaturesStmt(line_no=line.line_no, dataset=m.group('dataset'), columns=columns))
-            i += 1
-            continue
+    def parse_split(self) -> SplitStmt:
+        start = self.expect_keyword('split')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        self.expect_keyword('test')
+        number = self.expect('NUMBER', message="expected test size number after 'test'")
+        return SplitStmt(dataset=dataset, test_size=float(number.value), line=start.line)
 
-        m = SPLIT_RE.match(text)
-        if m:
-            statements.append(SplitStmt(line_no=line.line_no, dataset=m.group('dataset'), test_size=float(m.group('test_size'))))
-            i += 1
-            continue
+    def parse_model(self) -> ModelStmt:
+        start = self.expect_keyword('model')
+        name = self.expect('IDENT', message='expected model name').value
+        self.expect_keyword('as')
+        model_type = self.expect('IDENT', message='expected model type').value
+        return ModelStmt(name=name, model_type=model_type, line=start.line)
 
-        m = MODEL_RE.match(text)
-        if m:
-            statements.append(ModelStmt(line_no=line.line_no, name=m.group('name'), model_type=m.group('model_type')))
-            i += 1
-            continue
+    def parse_train(self) -> TrainStmt:
+        start = self.expect_keyword('train')
+        model = self.expect('IDENT', message='expected model name').value
+        self.expect_keyword('with')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        return TrainStmt(model=model, dataset=dataset, line=start.line)
 
-        m = TRAIN_RE.match(text)
-        if m:
-            statements.append(TrainStmt(line_no=line.line_no, model=m.group('model'), dataset=m.group('dataset')))
-            i += 1
-            continue
+    def parse_evaluate(self) -> EvaluateStmt:
+        start = self.expect_keyword('evaluate')
+        model = self.expect('IDENT', message='expected model name').value
+        self.expect_keyword('with')
+        metrics = self.parse_ident_list()
+        return EvaluateStmt(model=model, metrics=metrics, line=start.line)
 
-        m = EVAL_RE.match(text)
-        if m:
-            metrics = parse_identifier_list(m.group('metrics'), line.line_no)
-            statements.append(EvaluateStmt(line_no=line.line_no, model=m.group('model'), metrics=metrics))
-            i += 1
-            continue
+    def parse_save(self) -> SaveStmt:
+        start = self.expect_keyword('save')
+        model = self.expect('IDENT', message='expected model name').value
+        self.expect_keyword('to')
+        path = self.expect('STRING', message='expected output path string').value
+        return SaveStmt(model=model, path=path, line=start.line)
 
-        m = SAVE_RE.match(text)
-        if m:
-            statements.append(SaveStmt(line_no=line.line_no, model=m.group('model'), path=m.group('path')))
-            i += 1
-            continue
+    def parse_export(self) -> ExportStmt:
+        start = self.expect_keyword('export')
+        dataset = self.expect('IDENT', message='expected dataset name').value
+        self.expect_keyword('to')
+        path = self.expect('STRING', message='expected output path string').value
+        return ExportStmt(dataset=dataset, path=path, line=start.line)
 
-        m = EXPORT_RE.match(text)
-        if m:
-            statements.append(ExportStmt(line_no=line.line_no, dataset=m.group('dataset'), path=m.group('path')))
-            i += 1
-            continue
-
-        m = PREDICT_RE.match(text)
-        if m:
-            statements.append(PredictStmt(line_no=line.line_no, model=m.group('model'), dataset=m.group('dataset')))
-            i += 1
-            continue
-
-        m = PREPARE_OPEN_RE.match(text)
-        if m:
-            dataset = m.group('dataset')
-            commands = []
-            i += 1
-            while i < len(lines) and lines[i].text != '}':
-                commands.append(parse_prepare_command(lines[i]))
-                i += 1
-            if i >= len(lines):
-                raise BayaraSyntaxError(line.line_no, "prepare block was not closed with '}'")
-            statements.append(PrepareStmt(line_no=line.line_no, dataset=dataset, commands=commands))
-            i += 1
-            continue
-
-        if text == '}':
-            raise BayaraSyntaxError(line.line_no, "unexpected closing '}'")
-
-        raise BayaraSyntaxError(line.line_no, f"could not parse statement: '{text}'")
-
-    return Program(line_no=1, statements=statements)
+    def parse_ident_list(self) -> list[str]:
+        items = [self.expect('IDENT', message='expected identifier').value]
+        while self.match('COMMA'):
+            items.append(self.expect('IDENT', message='expected identifier after comma').value)
+        return items

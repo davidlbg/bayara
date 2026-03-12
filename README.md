@@ -1,141 +1,81 @@
-# Bayara 1.0.0
+# Bayara 1.0.1
 
-Bayara is a DSL for tabular data analysis and classical machine learning pipelines.
+Bayara is a small DSL for tabular data and classical machine learning pipelines.
 
-It compiles concise `.bay` scripts into Python powered by **pandas** and **scikit-learn**.
+This package is a **1.0.1-oriented foundation update**. The main goals are:
 
-## What Bayara 1.0 supports
+- a real tokenizer
+- a recursive descent parser
+- clearer syntax and semantic errors
+- safer preprocessing for scaling steps
+- runtime column validation during `check`
+- small ergonomic improvements such as multiline comments and default split
 
-### Data
-- `dataset <name> from "<path>"`
+## What's new in 1.0.1
+
+- Replaced line-regex parsing with **Lexer + Recursive Descent Parser**
+- Added `inspect <dataset>`
+- Added `fill nulls <column> with ...`
+- Added `drop <col1>, <col2>` inside `prepare`
+- Added `/* multiline comments */`
+- Added automatic `split ... test 0.2` when omitted
+- Fixed **data leakage** for `standardize` and `normalize`
+
+## Commands supported
+
+- `dataset <name> from "path.csv"`
 - `show <dataset>`
 - `describe <dataset>`
 - `columns <dataset>`
 - `shape <dataset>`
-
-### Preparation
-```bayara
-prepare churn {
-    drop nulls
-    onehot geography, gender
-    standardize age, balance, salary
-    normalize age, balance, salary
-}
-```
-
-Supported prepare commands:
-- `drop nulls`
-- `onehot <col1>, <col2>, ...`
-- `standardize <col1>, <col2>, ...`
-- `normalize <col1>, <col2>, ...`
-
-### ML pipeline
+- `inspect <dataset>`
+- `prepare <dataset> { ... }`
 - `target <dataset> -> <column>`
 - `features <dataset> -> <col1>, <col2>, ...`
 - `split <dataset> test <number>`
 - `model <name> as <model_type>`
 - `train <model> with <dataset>`
 - `evaluate <model> with <metric1>, <metric2>, ...`
-- `save <model> to "<path>"`
-- `export <dataset> to "<path>"`
-- `predict <model> on <dataset>`
+- `save <model> to "path.pkl"`
+- `export <dataset> to "path.csv"`
 
-### Models
-- `random_forest`
-- `logistic_regression`
-- `decision_tree`
-- `knn`
-- `naive_bayes`
-- `linear_regression`
+## Prepare block commands
 
-### Metrics
-Classification:
-- `accuracy`
-- `precision`
-- `recall`
-- `f1`
-
-Regression:
-- `mae`
-- `mse`
-- `r2`
-
-## CLI
-
-```bash
-python bayara.py compile examples/basic_classification.bay output.py
-python bayara.py run examples/basic_classification.bay
-python bayara.py check examples/basic_classification.bay
-python bayara.py version
-```
-
-## Installation
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
+- `drop <col1>, <col2>`
+- `fill nulls <column> with mean|median|mode|"text"|0`
+- `onehot <col1>, <col2>`
+- `standardize <col1>, <col2>`
+- `normalize <col1>, <col2>`
 
 ## Example
 
 ```bayara
-dataset churn from "data/churn.csv"
+/* Bayara 1.0.1 example */
 
-shape churn
-columns churn
-show churn
-describe churn
+dataset churn from "data/churn.csv"
+inspect churn
 
 prepare churn {
-    drop nulls
+    fill nulls balance with median
+    onehot segment
     standardize age, balance, salary
 }
 
 target churn -> exited
-features churn -> age, balance, salary
-split churn test 0.2
+features churn -> age, balance, salary, segment_enterprise, segment_retail
 
-model clf as random_forest
+model clf as logistic_regression
 train clf with churn
 
 evaluate clf with accuracy, precision, recall, f1
-save clf to "models/churn_rf.pkl"
+save clf to "models/churn.pkl"
 ```
 
-Run it:
+## CLI
 
 ```bash
-python bayara.py run examples/basic_classification.bay
+python bayara.py check examples/churn_101.bay
+python bayara.py compile examples/churn_101.bay output.py
+python bayara.py run examples/churn_101.bay output.py
+python bayara.py version
 ```
-
-## Project structure
-
-```text
-Bayara/
-├── bayara.py
-├── bayara/
-│   ├── __init__.py
-│   ├── ast_nodes.py
-│   ├── cli.py
-│   ├── errors.py
-│   ├── lexer.py
-│   ├── parser.py
-│   └── transpiler.py
-├── data/
-├── examples/
-├── tests/
-├── requirements.txt
-├── LICENSE
-└── .gitignore
-```
-
-## Notes
-
-- Bayara 1.0 is intentionally small.
-- The parser is statement-based and line-oriented, with explicit syntax errors and semantic validation.
-- This release is meant to be stable enough to publish as a first GitHub version.
-
-## License
-
-MIT
