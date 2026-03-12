@@ -5,6 +5,7 @@ from .ast_nodes import (
     FeaturesStmt,
     ModelStmt,
     PrepareDropCmd,
+    PrepareDropNullsCmd,
     PrepareFillNullsCmd,
     PrepareOneHotCmd,
     PrepareScaleCmd,
@@ -133,6 +134,9 @@ class Parser:
             raise BayaraSyntaxError('expected prepare command', tok.line, tok.column)
         if tok.value == 'drop':
             start = self.advance()
+            if self.current().type == 'IDENT' and self.current().value == 'nulls':
+                self.advance()
+                return PrepareDropNullsCmd(line=start.line)
             columns = self.parse_ident_list()
             return PrepareDropCmd(columns=columns, line=start.line)
         if tok.value == 'fill':

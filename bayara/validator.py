@@ -13,6 +13,7 @@ from .ast_nodes import (
     FeaturesStmt,
     ModelStmt,
     PrepareDropCmd,
+    PrepareDropNullsCmd,
     PrepareFillNullsCmd,
     PrepareOneHotCmd,
     PrepareScaleCmd,
@@ -79,7 +80,9 @@ def _ensure_columns_exist(df: pd.DataFrame, dataset: str, columns: list[str], li
 def _apply_prepare_sample(df: pd.DataFrame, dataset: str, prepare_stmt: PrepareStmt) -> pd.DataFrame:
     result = df.copy()
     for cmd in prepare_stmt.commands:
-        if isinstance(cmd, PrepareDropCmd):
+        if isinstance(cmd, PrepareDropNullsCmd):
+            result = result.dropna()
+        elif isinstance(cmd, PrepareDropCmd):
             _ensure_columns_exist(result, dataset, cmd.columns, cmd.line)
             result = result.drop(columns=cmd.columns)
         elif isinstance(cmd, PrepareFillNullsCmd):
@@ -100,7 +103,10 @@ def _apply_prepare_sample(df: pd.DataFrame, dataset: str, prepare_stmt: PrepareS
         elif isinstance(cmd, PrepareScaleCmd):
             _ensure_columns_exist(result, dataset, cmd.columns, cmd.line)
         else:
-            raise BayaraSemanticError('unknown prepare command during validation', prepare_stmt.line)
+            raise BayaraSemanticError(
+                f'unknown prepare command during validation: {type(cmd).__name__}',
+                prepare_stmt.line,
+            )
     return result
 
 

@@ -28,6 +28,11 @@ class PrepareDropCmd:
 
 
 @dataclass
+class PrepareDropNullsCmd:
+    line: int
+
+
+@dataclass
 class PrepareFillNullsCmd:
     column: str
     strategy: Union[str, float, int]
@@ -50,7 +55,15 @@ class PrepareScaleCmd:
 @dataclass
 class PrepareStmt:
     dataset: str
-    commands: List[Union[PrepareDropCmd, PrepareFillNullsCmd, PrepareOneHotCmd, PrepareScaleCmd]]
+    commands: List[
+        Union[
+            PrepareDropCmd,
+            PrepareDropNullsCmd,
+            PrepareFillNullsCmd,
+            PrepareOneHotCmd,
+            PrepareScaleCmd,
+        ]
+    ]
     line: int
 
 

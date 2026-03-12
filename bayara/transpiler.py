@@ -10,6 +10,7 @@ from .ast_nodes import (
     FeaturesStmt,
     ModelStmt,
     PrepareDropCmd,
+    PrepareDropNullsCmd,
     PrepareFillNullsCmd,
     PrepareOneHotCmd,
     PrepareScaleCmd,
@@ -117,7 +118,9 @@ class Transpiler:
         if isinstance(stmt, PrepareStmt):
             ds = self.datasets[stmt.dataset]
             for cmd in stmt.commands:
-                if isinstance(cmd, PrepareDropCmd):
+                if isinstance(cmd, PrepareDropNullsCmd):
+                    ds.pre_split_lines.append(f'{stmt.dataset} = {stmt.dataset}.dropna()')
+                elif isinstance(cmd, PrepareDropCmd):
                     ds.pre_split_lines.append(f'{stmt.dataset} = {stmt.dataset}.drop(columns={cmd.columns!r})')
                 elif isinstance(cmd, PrepareFillNullsCmd):
                     strat = cmd.strategy
@@ -138,9 +141,13 @@ class Transpiler:
                             f'{stmt.dataset}["{cmd.column}"] = {stmt.dataset}["{cmd.column}"].fillna({mode_var})'
                         )
                     elif isinstance(strat, str):
-                        ds.pre_split_lines.append(f'{stmt.dataset}["{cmd.column}"] = {stmt.dataset}["{cmd.column}"].fillna({strat!r})')
+                        ds.pre_split_lines.append(
+                            f'{stmt.dataset}["{cmd.column}"] = {stmt.dataset}["{cmd.column}"].fillna({strat!r})'
+                        )
                     else:
-                        ds.pre_split_lines.append(f'{stmt.dataset}["{cmd.column}"] = {stmt.dataset}["{cmd.column}"].fillna({strat})')
+                        ds.pre_split_lines.append(
+                            f'{stmt.dataset}["{cmd.column}"] = {stmt.dataset}["{cmd.column}"].fillna({strat})'
+                        )
                 elif isinstance(cmd, PrepareOneHotCmd):
                     ds.pre_split_lines.append(f'{stmt.dataset} = pd.get_dummies({stmt.dataset}, columns={cmd.columns!r})')
                 elif isinstance(cmd, PrepareScaleCmd):
