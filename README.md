@@ -135,6 +135,7 @@ Bayara/
 - Bayara 1.0 is intentionally small.
 - The parser is statement-based and line-oriented, with explicit syntax errors and semantic validation.
 - This release is meant to be stable enough to publish as a first GitHub version.
+- This project was developed with the assistance of AI tools.
 
 ## License
 
