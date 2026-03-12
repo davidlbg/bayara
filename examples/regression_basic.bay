@@ -1,0 +1,19 @@
+dataset housing from "data/housing.csv"
+
+shape housing
+columns housing
+
+prepare housing {
+    drop nulls
+    standardize rooms, area, age
+}
+
+target housing -> price
+features housing -> rooms, area, age
+split housing test 0.2
+
+model reg as linear_regression
+train reg with housing
+
+evaluate reg with mae, mse, r2
+save reg to "models/housing_lr.pkl"

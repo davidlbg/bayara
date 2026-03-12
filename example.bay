@@ -1,0 +1,11 @@
+dataset churn from "data/churn.csv"
+
+target churn -> exited
+features churn -> age, balance, salary
+
+split churn test 0.2
+
+model clf as random_forest
+train clf with churn
+
+evaluate clf with accuracy

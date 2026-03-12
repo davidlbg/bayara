@@ -1,0 +1,22 @@
+dataset churn from "data/churn.csv"
+
+shape churn
+columns churn
+show churn
+describe churn
+
+prepare churn {
+    drop nulls
+    standardize age, balance, salary
+}
+
+target churn -> exited
+features churn -> age, balance, salary
+
+split churn test 0.2
+
+model clf as random_forest
+train clf with churn
+
+evaluate clf with accuracy, precision, recall, f1
+save clf to "models/churn.pkl"

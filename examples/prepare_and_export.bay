@@ -1,0 +1,8 @@
+dataset churn from "data/churn.csv"
+
+prepare churn {
+    drop nulls
+    normalize age, balance, salary
+}
+
+export churn to "exports/churn_normalized.csv"
