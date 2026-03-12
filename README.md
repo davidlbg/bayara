@@ -43,7 +43,17 @@ split churn test 0.2
 
 model clf as random_forest
 train clf with churn
+```
 
+---
+
+# evaluate
+
+Evaluates the trained model.
+
+Example:
+
+```bayara
 evaluate clf with accuracy, precision, recall, f1
 ````
 

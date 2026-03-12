@@ -1,16 +1,20 @@
 class BayaraError(Exception):
-    """Base Bayara exception."""
+    pass
 
 
 class BayaraSyntaxError(BayaraError):
-    def __init__(self, line_no: int, message: str):
-        super().__init__(f"Syntax error on line {line_no}: {message}")
-        self.line_no = line_no
-        self.message = message
+    def __init__(self, message: str, line: int | None = None, column: int | None = None):
+        prefix = "[Syntax Error]"
+        location = ""
+        if line is not None:
+            location += f" line {line}"
+        if column is not None:
+            location += f", column {column}"
+        super().__init__(f"{prefix}{location}: {message}")
 
 
 class BayaraSemanticError(BayaraError):
-    def __init__(self, line_no: int, message: str):
-        super().__init__(f"Semantic error on line {line_no}: {message}")
-        self.line_no = line_no
-        self.message = message
+    def __init__(self, message: str, line: int | None = None):
+        prefix = "[Semantic Error]"
+        location = f" line {line}" if line is not None else ""
+        super().__init__(f"{prefix}{location}: {message}")

@@ -1,104 +1,123 @@
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
+from typing import List, Union
 
 
 @dataclass
-class Node:
-    line_no: int
+class Program:
+    statements: list
 
 
 @dataclass
-class Program(Node):
-    statements: List[Node] = field(default_factory=list)
-
-
-@dataclass
-class DatasetStmt(Node):
+class DatasetStmt:
     name: str
     path: str
+    line: int
 
 
 @dataclass
-class ShowStmt(Node):
-    name: str
+class SimpleDatasetStmt:
+    command: str
+    dataset: str
+    line: int
 
 
 @dataclass
-class DescribeStmt(Node):
-    name: str
+class PrepareDropCmd:
+    columns: List[str]
+    line: int
 
 
 @dataclass
-class ColumnsStmt(Node):
-    name: str
+class PrepareDropNullsCmd:
+    line: int
 
 
 @dataclass
-class ShapeStmt(Node):
-    name: str
+class PrepareFillNullsCmd:
+    column: str
+    strategy: Union[str, float, int]
+    line: int
 
 
 @dataclass
-class TargetStmt(Node):
+class PrepareOneHotCmd:
+    columns: List[str]
+    line: int
+
+
+@dataclass
+class PrepareScaleCmd:
+    kind: str
+    columns: List[str]
+    line: int
+
+
+@dataclass
+class PrepareStmt:
+    dataset: str
+    commands: List[
+        Union[
+            PrepareDropCmd,
+            PrepareDropNullsCmd,
+            PrepareFillNullsCmd,
+            PrepareOneHotCmd,
+            PrepareScaleCmd,
+        ]
+    ]
+    line: int
+
+
+@dataclass
+class TargetStmt:
     dataset: str
     column: str
+    line: int
 
 
 @dataclass
-class FeaturesStmt(Node):
+class FeaturesStmt:
     dataset: str
     columns: List[str]
+    line: int
 
 
 @dataclass
-class SplitStmt(Node):
+class SplitStmt:
     dataset: str
     test_size: float
+    line: int
 
 
 @dataclass
-class ModelStmt(Node):
+class ModelStmt:
     name: str
     model_type: str
+    line: int
 
 
 @dataclass
-class TrainStmt(Node):
+class TrainStmt:
     model: str
     dataset: str
+    line: int
 
 
 @dataclass
-class EvaluateStmt(Node):
+class EvaluateStmt:
     model: str
     metrics: List[str]
+    line: int
 
 
 @dataclass
-class SaveStmt(Node):
+class SaveStmt:
     model: str
     path: str
+    line: int
 
 
 @dataclass
-class ExportStmt(Node):
+class ExportStmt:
     dataset: str
     path: str
-
-
-@dataclass
-class PredictStmt(Node):
-    model: str
-    dataset: str
-
-
-@dataclass
-class PrepareCommand(Node):
-    command: str
-    columns: List[str] = field(default_factory=list)
-
-
-@dataclass
-class PrepareStmt(Node):
-    dataset: str
-    commands: List[PrepareCommand] = field(default_factory=list)
+    line: int
