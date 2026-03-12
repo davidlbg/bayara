@@ -1,4 +1,4 @@
-# Bayara 1.0.1
+# Bayara
 
 Bayara is a small DSL for tabular data and classical machine learning pipelines.
 
