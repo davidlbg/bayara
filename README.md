@@ -10,13 +10,11 @@
 </p>
 
 <p align="center">
-
-![Version](https://img.shields.io/badge/version-1.0.2-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
-![Status](https://img.shields.io/badge/status-experimental-orange)
-![VS Code Extension](https://img.shields.io/badge/VSCode-extension-purple)
-
+  <img src="https://img.shields.io/badge/version-1.0.2-blue">
+  <img src="https://img.shields.io/badge/license-MIT-green">
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue">
+  <img src="https://img.shields.io/badge/status-experimental-orange">
+  <img src="https://img.shields.io/badge/VSCode-extension-purple">
 </p>
 
 ---
