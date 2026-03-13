@@ -1,39 +1,48 @@
-# Bayara
 
-**Bayara** is a small domain-specific language (DSL) designed for
-**tabular data analysis and classical machine learning pipelines**.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/davidlbg/bayara/main/assets/bayara-banner.png" alt="Bayara Banner" width="700"/>
+</p>
 
-It allows users to write concise `.bay` scripts that are compiled into
-Python code using **pandas** and **scikit-learn**.
+<h1 align="center">Bayara</h1>
 
-Bayara is not meant to compete with large frameworks such as MLFlow or
-full ML platforms.\
-Instead, it aims to provide a **simple, readable way to define tabular
-ML workflows**.
+<p align="center">
+  A small domain‑specific language for tabular machine learning pipelines
+</p>
 
-------------------------------------------------------------------------
+<p align="center">
 
-# Project Status
+![Version](https://img.shields.io/badge/version-1.0.2-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![Status](https://img.shields.io/badge/status-experimental-orange)
+![VS Code Extension](https://img.shields.io/badge/VSCode-extension-purple)
 
-Bayara is an **early experimental language (v1.0.1)**.
+</p>
 
-The current version focuses on:
+---
 
--   tabular dataset workflows
--   classical machine learning models
--   simple preprocessing pipelines
--   an easy-to-read DSL syntax
+# What is Bayara?
 
-Future improvements are planned, but the goal of this version is to
-provide a **clear and functional minimal language**.
+**Bayara** is a small domain‑specific language (DSL) designed for **tabular data analysis and classical machine learning pipelines**.
 
-------------------------------------------------------------------------
+It allows users to write simple `.bay` scripts that compile into **Python code using pandas and scikit‑learn**.
+
+The goal of Bayara is not to replace large ML platforms, but to provide a **minimal and readable language for describing ML workflows**.
+
+Bayara emphasizes:
+
+• simplicity  
+• readability  
+• small learning curve  
+• reproducible ML pipelines  
+
+---
 
 # Example
 
-Example Bayara script:
+A complete machine learning pipeline in Bayara:
 
-``` bayara
+```bayara
 dataset churn from "data/churn.csv"
 
 prepare churn {
@@ -54,27 +63,29 @@ evaluate clf with accuracy, precision, recall, f1
 
 This script:
 
-1.  Loads a dataset
-2.  Prepares the data
-3.  Defines target and features
-4.  Splits the dataset
-5.  Trains a model
-6.  Evaluates the results
+1. Loads a dataset
+2. Cleans the data
+3. Defines target and features
+4. Splits the dataset
+5. Trains a model
+6. Evaluates the results
 
-------------------------------------------------------------------------
+Bayara compiles this script into **Python code using pandas and scikit‑learn**.
+
+---
 
 # Installation
 
 Clone the repository:
 
-``` bash
+```bash
 git clone https://github.com/davidlbg/bayara.git
 cd bayara
 ```
 
 Create a virtual environment:
 
-``` bash
+```bash
 python -m venv .venv
 ```
 
@@ -82,265 +93,239 @@ Activate it:
 
 Windows:
 
-``` bash
+```bash
 .venv\Scripts\activate
 ```
 
-Install dependencies:
+Install Bayara:
 
-``` bash
-pip install -r requirements.txt
+```bash
+pip install -e .
 ```
 
-------------------------------------------------------------------------
+---
 
 # CLI Usage
 
-Run a script:
+Run a script
 
-``` bash
-python bayara.py run examples/basic_classification.bay
+```bash
+bayara run examples/basic_classification.bay
 ```
 
-Compile only:
+Compile to Python
 
-``` bash
-python bayara.py compile examples/basic_classification.bay output.py
+```bash
+bayara compile examples/basic_classification.bay output.py
 ```
 
-Check syntax:
+Check syntax and semantic errors
 
-``` bash
-python bayara.py check examples/basic_classification.bay
+```bash
+bayara check examples/basic_classification.bay
 ```
 
-Show version:
+Show version
 
-``` bash
-python bayara.py version
+```bash
+bayara version
 ```
 
-------------------------------------------------------------------------
+---
 
 # Language Overview
 
 ## dataset
 
-``` bayara
+Loads a dataset from a CSV file.
+
+```bayara
 dataset churn from "data/churn.csv"
 ```
 
 Compiles to:
 
-``` python
+```python
 churn = pd.read_csv("data/churn.csv")
 ```
 
-------------------------------------------------------------------------
+---
 
-## show
+## prepare
 
-``` bayara
-show churn
-```
+Preprocessing block:
 
-Equivalent:
-
-``` python
-print(churn.head())
-```
-
-------------------------------------------------------------------------
-
-## describe
-
-``` bayara
-describe churn
-```
-
-------------------------------------------------------------------------
-
-## columns
-
-``` bayara
-columns churn
-```
-
-------------------------------------------------------------------------
-
-## shape
-
-``` bayara
-shape churn
-```
-
-------------------------------------------------------------------------
-
-# prepare
-
-``` bayara
+```bayara
 prepare churn {
     drop nulls
+    fill nulls age with median
     onehot geography
     standardize age, balance
 }
 ```
 
-Supported operations:
+Supported operations
 
-### drop nulls
+• drop nulls  
+• fill nulls  
+• onehot  
+• standardize  
+• normalize  
 
-Removes rows containing missing values.
+---
 
-### onehot
+## target
 
-One-hot encoding.
-
-### standardize
-
-Standard scaling.
-
-### normalize
-
-Min‑max scaling.
-
-------------------------------------------------------------------------
-
-# target
-
-``` bayara
+```bayara
 target churn -> exited
 ```
 
-------------------------------------------------------------------------
+---
 
-# features
+## features
 
-``` bayara
+```bayara
 features churn -> age, balance, salary
 ```
 
-------------------------------------------------------------------------
+---
 
-# split
+## split
 
-``` bayara
+```bayara
 split churn test 0.2
 ```
 
-------------------------------------------------------------------------
+If omitted, Bayara uses **0.2 as default**.
 
-# model
+---
 
-``` bayara
+## model
+
+```bayara
 model clf as random_forest
 ```
 
 Supported models:
 
--   random_forest
--   logistic_regression
--   decision_tree
--   knn
--   naive_bayes
--   linear_regression
+• random_forest  
+• logistic_regression  
+• decision_tree  
+• knn  
+• naive_bayes  
+• linear_regression  
 
-------------------------------------------------------------------------
+---
 
-# train
+## train
 
-``` bayara
+```bayara
 train clf with churn
 ```
 
-------------------------------------------------------------------------
+---
 
-# evaluate
+## evaluate
 
-``` bayara
+```bayara
 evaluate clf with accuracy, precision, recall, f1
 ```
 
-Supported metrics:
+Metrics:
 
-Classification: - accuracy - precision - recall - f1
+Classification:
 
-Regression: - mae - mse - r2
+• accuracy  
+• precision  
+• recall  
+• f1  
 
-------------------------------------------------------------------------
+Regression:
 
-# save
+• mae  
+• mse  
+• r2  
 
-``` bayara
-save clf to "models/model.pkl"
-```
+---
 
-------------------------------------------------------------------------
+# VS Code Extension
 
-# export
+Bayara provides official **VS Code language support** including:
 
-``` bayara
-export churn to "output.csv"
-```
+• syntax highlighting  
+• autocomplete  
+• snippets  
+• hover documentation  
 
-------------------------------------------------------------------------
+Search for:
+
+**"Bayara Language Support"**
+
+in the VS Code Marketplace.
+
+---
 
 # Project Structure
 
-    bayara/
-    │
-    ├── bayara.py
-    ├── bayara/
-    │   ├── ast_nodes.py
-    │   ├── cli.py
-    │   ├── errors.py
-    │   ├── lexer.py
-    │   ├── parser.py
-    │   ├── tokens.py
-    │   ├── transpiler.py
-    │   ├── validator.py
-    │   └── version.py
-    │
-    ├── examples/
-    ├── data/
-    ├── models/
-    ├── requirements.txt
-    └── README.md
+```
+bayara/
+│
+├── bayara.py
+├── bayara/
+│   ├── ast_nodes.py
+│   ├── cli.py
+│   ├── errors.py
+│   ├── lexer.py
+│   ├── parser.py
+│   ├── tokens.py
+│   ├── transpiler.py
+│   ├── validator.py
+│   └── version.py
+│
+├── examples/
+├── data/
+├── models/
+├── exports/
+├── tests/
+│
+├── pyproject.toml
+├── requirements.txt
+└── README.md
+```
 
-------------------------------------------------------------------------
+---
 
 # Roadmap
 
-Future improvements may include:
+Planned improvements
 
--   improved parser and grammar
--   better error messages
--   dataset inspection tools
--   additional ML models
--   feature engineering helpers
--   improved CLI
+• improved grammar and parser  
+• better error diagnostics  
+• more ML models  
+• plotting commands  
+• pipeline abstractions  
+• improved CLI features  
 
-------------------------------------------------------------------------
+---
 
 # Philosophy
 
-Bayara aims to be:
+Bayara aims to be
 
--   simple
--   readable
--   focused on tabular ML
--   easy to experiment with
+• simple  
+• readable  
+• focused on tabular ML  
+• easy to experiment with  
 
-It is not intended to replace full ML frameworks, but to provide a
-**small and understandable language for defining ML pipelines**.
+It is intentionally **small and understandable**.
 
-------------------------------------------------------------------------
+---
 
 # Acknowledgements
 
 This project was developed with the assistance of AI tools.
 
-------------------------------------------------------------------------
+---
 
 # License
 
