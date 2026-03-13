@@ -1,5 +1,32 @@
+# Virtual environment
 .venv/
+venv/
+
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Generated Python output
 output.py
+*.generated.py
+
+# Model artifacts
 models/*.pkl
+models/*.joblib
+
+# Exported datasets
+exports/*.csv
+exports/*.xlsx
+exports/*.parquet
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
